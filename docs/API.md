@@ -177,3 +177,10 @@ Cloudflare 自定义探测主机通过 `CF_TEST_HOSTS` 配置。当前探测任�
 关键环境变量详见 [`.env.example`](../.env.example)：监听地址/端口、数据库路径、
 允许目标、CORS 来源、配额、请求限制、超时、CF 主机和参考目录均可配置。
 
+## 7. 本地数据文件
+
+首次启动会自动创建 SQLite 数据库，默认路径为 `data/corsproxy.db`。该目录被 Git
+忽略，避免将运行时 API Key 哈希、审计记录和持续更新的采集数据提交到仓库。执行
+`sync-risk`、`collect`、`probe-cf` 后，分别填充 `risk_observations`、`proxies` 和
+`cf_candidates`；执行 `validate-proxies` 后，只有近期验证成功的代理才会出现在
+`GET /v1/proxies`。

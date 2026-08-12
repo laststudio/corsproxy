@@ -1,8 +1,14 @@
+import os
 import socket
 
 import pytest
 
 from corsproxy.security import TargetError, is_public_ip, validate_target
+from corsproxy.security import filtered_headers
+
+
+def test_ssl_keylog_environment_is_disabled():
+    assert not os.environ.get("SSLKEYLOGFILE")
 
 
 def test_public_ip_classification():
@@ -21,3 +27,7 @@ def test_target_accepts_allowlisted_public_dns(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", lambda *args, **kwargs: [(None, None, None, None, ("1.1.1.1", 443))])
     assert validate_target("https://api.example.com/x", ("api.example.com",)) == ("api.example.com", 443)
 
+
+def test_response_headers_drop_decoding_metadata():
+    headers = filtered_headers({"Content-Encoding": "gzip", "Content-Length": "12", "X-Test": "ok"}, response=True)
+    assert headers == {"X-Test": "ok"}

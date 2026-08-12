@@ -112,7 +112,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(502, "upstream response too large")
         store.record_usage(key, len(body) + len(data))
         store.audit(key, host, upstream.status_code, len(data), (time.perf_counter() - started) * 1000, "direct")
-        response_headers = filtered_headers(dict(upstream.headers))
+        response_headers = filtered_headers(dict(upstream.headers), response=True)
         return StreamingResponse(iter([data]), status_code=upstream.status_code, headers=response_headers)
 
     @app.post("/v1/admin/jobs/{name}")

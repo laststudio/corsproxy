@@ -39,6 +39,11 @@ HOP_BY_HOP_HEADERS = frozenset({
     "te", "trailers", "transfer-encoding", "upgrade", "host",
 })
 
+# httpx transparently decodes compressed response bodies. These framing headers
+# must not be forwarded with the decoded bytes, or clients will decode again.
+RESPONSE_REWRITE_HEADERS = frozenset({"content-encoding", "content-length"})
 
-def filtered_headers(headers: dict[str, str]) -> dict[str, str]:
-    return {key: value for key, value in headers.items() if key.lower() not in HOP_BY_HOP_HEADERS}
+
+def filtered_headers(headers: dict[str, str], *, response: bool = False) -> dict[str, str]:
+    excluded = HOP_BY_HOP_HEADERS | (RESPONSE_REWRITE_HEADERS if response else frozenset())
+    return {key: value for key, value in headers.items() if key.lower() not in excluded}

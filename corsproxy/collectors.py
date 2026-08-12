@@ -54,10 +54,12 @@ async def fetch_text(url: str) -> str:
 
 async def sync_risk(settings: Settings, store: Store) -> dict:
     total = 0
+    succeeded = 0
     for name, url in RISK_SOURCES.items():
         try:
             values = [(item, name, "blocklist", url) for item in parse_ip_lines(await fetch_text(url))]
             total += store.add_risk(values)
+            succeeded += 1
             store.source_status(name, "risk", url, "ok", f"{len(values)} entries")
         except Exception as exc:
             store.source_status(name, "risk", url, "error", str(exc)[:300])
@@ -71,8 +73,11 @@ async def sync_risk(settings: Settings, store: Store) -> dict:
                     if item:
                         values.append((item, "lastudio_proxy_blocks", "proxy", str(path)))
             total += store.add_risk(values)
+            succeeded += 1
             store.source_status("lastudio_proxy_blocks", "risk", str(path), "ok", f"{len(values)} entries")
-    return {"sources": len(RISK_SOURCES), "observations": total}
+    if not succeeded:
+        raise RuntimeError("all risk sources failed")
+    return {"sources": succeeded, "observations": total}
 
 
 def parse_proxy_text(text: str, source: str) -> list[dict]:
@@ -91,6 +96,7 @@ def parse_proxy_text(text: str, source: str) -> list[dict]:
 
 async def collect_proxies(store: Store) -> dict:
     count = 0
+    succeeded = 0
     for name, url in PROXY_SOURCES.items():
         try:
             rows = parse_proxy_text(await fetch_text(url), name)
@@ -98,9 +104,12 @@ async def collect_proxies(store: Store) -> dict:
             with store.connect() as conn:
                 conn.executemany("INSERT OR REPLACE INTO proxies(ip,port,protocol,source,collected_at) VALUES (?,?,?,?,?)", [(x["ip"], x["port"], x["protocol"], x["source"], now) for x in rows])
             count += len(rows)
+            succeeded += 1
             store.source_status(name, "proxy", url, "ok", f"{len(rows)} entries")
         except Exception as exc:
             store.source_status(name, "proxy", url, "error", str(exc)[:300])
+    if not succeeded:
+        raise RuntimeError("all proxy sources failed")
     return {"proxies": count}
 
 
@@ -130,11 +139,13 @@ async def validate_proxies(store: Store, limit: int = 500) -> dict:
 
 async def probe_cf(settings: Settings, store: Store) -> dict:
     candidates = []
+    cloudflare_ok = False
     try:
         text = await fetch_text("https://www.cloudflare.com/ips-v4")
         for network in parse_ip_lines(text):
             net = ipaddress.ip_network(network, strict=False)
             candidates.append(str(net.network_address))
+        cloudflare_ok = True
     except Exception:
         candidates = []
     for host in settings.cf_test_hosts:
@@ -147,4 +158,6 @@ async def probe_cf(settings: Settings, store: Store) -> dict:
     if rows:
         with store.connect() as conn:
             conn.executemany("INSERT OR REPLACE INTO cf_candidates(ip,source,mode,region,success_rate,latency_ms,ttfb_ms,speed_kbps,last_checked) VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    if not cloudflare_ok and not settings.cf_test_hosts:
+        raise RuntimeError("Cloudflare candidate source failed and CF_TEST_HOSTS is empty")
     return {"candidates": len(rows)}

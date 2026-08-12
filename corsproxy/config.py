@@ -5,6 +5,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+# Some desktop/debug environments export SSLKEYLOGFILE to a path the service
+# account cannot write. Python's ssl module opens it while creating every TLS
+# context, which otherwise prevents all HTTPS collectors and forwarding calls.
+os.environ["SSLKEYLOGFILE"] = ""
+
+
 def _csv(name: str, default: str = "", *, lower: bool = False) -> tuple[str, ...]:
     values = tuple(x.strip() for x in os.getenv(name, default).split(",") if x.strip())
     return tuple(x.lower() for x in values) if lower else values
