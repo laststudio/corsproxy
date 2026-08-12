@@ -5,8 +5,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
-def _csv(name: str, default: str = "") -> tuple[str, ...]:
-    return tuple(x.strip().lower() for x in os.getenv(name, default).split(",") if x.strip())
+def _csv(name: str, default: str = "", *, lower: bool = False) -> tuple[str, ...]:
+    values = tuple(x.strip() for x in os.getenv(name, default).split(",") if x.strip())
+    return tuple(x.lower() for x in values) if lower else values
 
 
 @dataclass(frozen=True)
@@ -16,9 +17,9 @@ class Settings:
     db_path: Path = Path(os.getenv("CORS_PROXY_DB", "data/corsproxy.db"))
     admin_key: str = os.getenv("CORS_PROXY_ADMIN_KEY", "")
     api_keys: tuple[str, ...] = field(default_factory=lambda: _csv("CORS_PROXY_API_KEYS"))
-    allowed_targets: tuple[str, ...] = field(default_factory=lambda: _csv("CORS_PROXY_ALLOWED_TARGETS"))
+    allowed_targets: tuple[str, ...] = field(default_factory=lambda: _csv("CORS_PROXY_ALLOWED_TARGETS", lower=True))
     allowed_origins: tuple[str, ...] = field(default_factory=lambda: _csv("CORS_PROXY_ALLOWED_ORIGINS"))
-    cf_test_hosts: tuple[str, ...] = field(default_factory=lambda: _csv("CF_TEST_HOSTS"))
+    cf_test_hosts: tuple[str, ...] = field(default_factory=lambda: _csv("CF_TEST_HOSTS", lower=True))
     scheduler: str = os.getenv("CORS_PROXY_SCHEDULER", "off").lower()
     request_limit_per_minute: int = int(os.getenv("CORS_PROXY_RPM", "60"))
     concurrent_limit: int = int(os.getenv("CORS_PROXY_CONCURRENCY", "4"))

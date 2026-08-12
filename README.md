@@ -15,6 +15,9 @@ python -m corsproxy.cli serve
 
 The service defaults to `127.0.0.1:9800`. Use `/docs` for the OpenAPI UI.
 
+完整的中文接口、认证、配置、任务和转发安全说明见
+[`docs/API.md`](docs/API.md)。
+
 ## Jobs
 
 External scheduler mode:
@@ -31,4 +34,3 @@ run external cron jobs for the same database while the internal scheduler is act
 
 `CORS_PROXY_REFERENCE_DIR` may point at the read-only `lastudio_backend` directory
 to import `ipdbs/proxy_blocks.csv`; no reference-project file is changed.
-
